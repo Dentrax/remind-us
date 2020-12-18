@@ -1,0 +1,11 @@
+integrations:
+  gitlab:
+    baseURL: https://gitlab.com
+    token: xxx
+    listen:
+      areas:
+        - type: "PR"
+      groups:
+        - 111
+        - 222
+        - 333
