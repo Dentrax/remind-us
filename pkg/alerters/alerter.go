@@ -14,20 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package integrations
+package alerters
 
-import (
-	"github.com/Dentrax/remind-us/pkg/config"
-	"github.com/slack-go/slack"
-)
+import "github.com/Dentrax/remind-us/pkg/config"
 
-type IIntegration interface {
+type IAlerter interface {
 	Name() string
-	Load(config.IntegrationConfig) error
-	GenerateSlackMessage(GenerateMessageOptions) (*slack.WebhookMessage, error)
-}
-
-type GenerateMessageOptions struct {
-	//For integration name, i.e. Slack.
-	For string
+	Load(alertConfig config.AlertConfig) error
+	Alert(message interface{}) error
 }

@@ -23,6 +23,7 @@ import (
 
 type Config struct {
 	Integrations IntegrationConfig `yaml:"integrations"`
+	Alerts       AlertConfig       `yaml:"alert"`
 }
 
 type IntegrationConfig struct {
@@ -38,11 +39,22 @@ type GitLabIntegrationConfig struct {
 
 type IntegrationListenConfig struct {
 	Areas  []IntegrationAreaConfig
-	Groups []uint16
+	Groups []int
 }
 
 type IntegrationAreaConfig struct {
 	Type string `yaml:"type"`
+}
+
+type AlertConfig struct {
+	Slack SlackAlertConfig `yaml:"slack"`
+}
+
+type SlackAlertConfig struct {
+	Webhook  string `yaml:"webhook"`
+	Channel  string `yaml:"channel"`
+	Username string `yaml:"username"`
+	Icon     string `yaml:"icon"`
 }
 
 func Load(path string) (*Config, error) {

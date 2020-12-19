@@ -14,20 +14,39 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package integrations
+package slack
 
 import (
+	"errors"
 	"github.com/Dentrax/remind-us/pkg/config"
 	"github.com/slack-go/slack"
 )
 
-type IIntegration interface {
-	Name() string
-	Load(config.IntegrationConfig) error
-	GenerateSlackMessage(GenerateMessageOptions) (*slack.WebhookMessage, error)
+type Slack struct {
+	config *config.SlackAlertConfig
+	loaded bool
 }
 
-type GenerateMessageOptions struct {
-	//For integration name, i.e. Slack.
-	For string
+func (s *Slack) Name() string {
+	return "Slack"
+}
+
+func (s *Slack) Load(config config.AlertConfig) error {
+	s.config = &config.Slack
+	s.loaded = true
+	return nil
+}
+
+func (s *Slack) Alert(message interface{}) error {
+	if !s.loaded {
+		return errors.New("not loaded")
+	}
+
+	wh := message.(*slack.WebhookMessage)
+
+	wh.Username = s.config.Username
+	wh.Channel = s.config.Channel
+	wh.IconEmoji = s.config.Icon
+
+	return slack.PostWebhook(s.config.Webhook, message.(*slack.WebhookMessage))
 }

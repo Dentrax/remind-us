@@ -48,7 +48,7 @@ func TestLoad(t *testing.T) {
 		},
 		{
 			"it should load if good path and yaml",
-			"../../config.yaml",
+			"../../testdata/config.yaml",
 			&Config{
 				IntegrationConfig{
 					GitLab: GitLabIntegrationConfig{
@@ -60,8 +60,16 @@ func TestLoad(t *testing.T) {
 									Type: "PR",
 								},
 							},
-							Groups: []uint16{111, 222, 333},
+							Groups: []int{111, 222, 333},
 						},
+					},
+				},
+				AlertConfig{
+					SlackAlertConfig{
+						Webhook:  "webhook",
+						Channel:  "#channel",
+						Username: "Username",
+						Icon:     ":icon:",
 					},
 				},
 			},

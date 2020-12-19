@@ -26,18 +26,20 @@ import (
 	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 	"github.com/xanzy/go-gitlab"
+	"log"
 	"strconv"
 	"strings"
 	"time"
 )
 
 type GitLab struct {
-	Result *[]GroupScanResponse
+	Result []*GroupScanResponse
 	config *config.GitLabIntegrationConfig
+	loaded bool
 }
 
 type GroupScanResponse struct {
-	GroupID  uint16
+	GroupID  int
 	Projects []GroupProjectScanResponse
 }
 
@@ -46,21 +48,21 @@ type GroupProjectScanResponse struct {
 	MRs     []*gitlab.MergeRequest
 }
 
-func (g GitLab) Name() string {
+func (g *GitLab) Name() string {
 	return "GitLab"
 }
 
-func (g GitLab) Load(config config.IntegrationConfig) error {
+func (g *GitLab) Load(config config.IntegrationConfig) error {
 	git, err := gitlab.NewClient(config.GitLab.Token, gitlab.WithBaseURL(config.GitLab.BaseURL))
 
 	if err != nil {
 		return errors.Wrap(err, "Unable to generate GitLab Client")
 	}
 
-	result := make([]GroupScanResponse, len(config.GitLab.Listen.Groups))
+	g.Result = make([]*GroupScanResponse, len(config.GitLab.Listen.Groups))
 
-	for i, g := range config.GitLab.Listen.Groups {
-		projects, _, err := git.Groups.ListGroupProjects(g, &gitlab.ListGroupProjectsOptions{
+	for i, l := range config.GitLab.Listen.Groups {
+		projects, _, err := git.Groups.ListGroupProjects(l, &gitlab.ListGroupProjectsOptions{
 			ListOptions: gitlab.ListOptions{
 				Page:    1,
 				PerPage: 100,
@@ -68,11 +70,13 @@ func (g GitLab) Load(config config.IntegrationConfig) error {
 		})
 
 		if err != nil {
-			return errors.Wrapf(err, "Unable to list projects for group id: %d", g)
+			return errors.Wrapf(err, "Unable to list projects for group id: '%d'", l)
 		}
 
-		result[i] = GroupScanResponse{
-			GroupID:  g,
+		log.Printf("%d project(s) found in group %d\n", len(projects), l)
+
+		g.Result[i] = &GroupScanResponse{
+			GroupID:  l,
 			Projects: make([]GroupProjectScanResponse, len(projects)),
 		}
 
@@ -90,26 +94,32 @@ func (g GitLab) Load(config config.IntegrationConfig) error {
 			)
 
 			if err != nil {
-				return errors.Wrapf(err, "Unable to list merge requests for project id: %d, group id: %d", p.ID, g)
+				return errors.Wrapf(err, "Unable to list merge requests for project id: %d, group id: %d", p.ID, l)
 			}
 
-			result[i].Projects[j] = GroupProjectScanResponse{
+			log.Printf("%d MR(s) found in project %s\n", len(mrs), p.Name)
+
+			g.Result[i].Projects[j] = GroupProjectScanResponse{
 				Project: p,
 				MRs:     mrs,
 			}
 		}
 	}
 
-	g.Result = &result
 	g.config = &config.GitLab
+	g.loaded = true
 
 	return nil
 }
 
-func (g GitLab) GenerateMessage(options integrations.GenerateMessageOptions) (slack.WebhookMessage, error) {
+func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOptions) (*slack.WebhookMessage, error) {
+	if g.loaded == false {
+		return nil, errors.New("not loaded")
+	}
+
 	var attachments []slack.Attachment
 
-	for _, r := range *g.Result {
+	for _, r := range g.Result {
 		for _, p := range r.Projects {
 			var resultProject bytes.Buffer
 
@@ -128,7 +138,22 @@ func (g GitLab) GenerateMessage(options integrations.GenerateMessageOptions) (sl
 				continue
 			}
 
-			resultProject.WriteString(fmt.Sprintf("There are <%s|%d open MRs> in <%s|%s>. The oldest one is %s old.", fmt.Sprintf("%s/merge_requests?state=opened", p.Project.WebURL), openMRs, p.Project.NameWithNamespace, p.Project.WebURL, durafmt.Parse(time.Since(oldest)).LimitFirstN(1).String()))
+			GetTimeText := func(t *time.Time) string {
+				d := durafmt.Parse(time.Since(*t)).LimitFirstN(1)
+				if d.Duration().Hours() >= 48 {
+					return fmt.Sprintf("*%s*", d.String())
+				}
+				return d.String()
+			}
+
+			GetMRKeyword := func(openMRs int) string {
+				if openMRs > 1 {
+					return "MRs"
+				}
+				return "MR"
+			}(openMRs)
+
+			resultProject.WriteString(fmt.Sprintf("There are <%s|%d open %s> in <%s|%s>. The oldest one is %s old.", fmt.Sprintf("%s/merge_requests?state=opened", p.Project.WebURL), openMRs, GetMRKeyword, p.Project.WebURL, p.Project.NameWithNamespace, GetTimeText(&oldest)))
 			resultProject.WriteString("\n")
 
 			var reviewedMRs []*gitlab.MergeRequest
@@ -144,14 +169,6 @@ func (g GitLab) GenerateMessage(options integrations.GenerateMessageOptions) (sl
 			}
 
 			GetDateInfo := func(created, updated *time.Time) string {
-				GetTimeText := func(t *time.Time) string {
-					d := durafmt.Parse(time.Since(*t)).LimitFirstN(1)
-					if d.Duration().Hours() >= 48 {
-						return fmt.Sprintf("*%s*", d.String())
-					}
-					return d.String()
-				}
-
 				if created != nil && updated != nil {
 					if created.Equal(*updated) {
 						return fmt.Sprintf("(created %s ago)", GetTimeText(created))
@@ -201,21 +218,15 @@ func (g GitLab) GenerateMessage(options integrations.GenerateMessageOptions) (sl
 				AuthorName: p.Project.Name,
 				AuthorLink: p.Project.HTTPURLToRepo,
 				AuthorIcon: p.Project.AvatarURL,
-				Title:      "title",
 				Text:       resultProject.String(),
 				Footer:     p.Project.Namespace.FullPath,
-				FooterIcon: fmt.Sprintf("%s/%s", g.config.BaseURL, p.Project.Namespace.AvatarURL),
+				FooterIcon: fmt.Sprintf("%s%s", g.config.BaseURL, p.Project.Namespace.AvatarURL),
 				Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 			})
 		}
 	}
 
-	return slack.WebhookMessage{
+	return &slack.WebhookMessage{
 		Attachments: attachments,
-		Username:    "Username",
-		IconEmoji:   ":emoji:",
-		IconURL:     "icon_url",
-		Channel:     "#channel",
-		Text:        "text",
 	}, nil
 }

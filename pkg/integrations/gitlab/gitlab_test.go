@@ -32,7 +32,7 @@ import (
 )
 
 func loadGitlab(rootPath string, groupPaths []string) (*GitLab, error) {
-	groupScanResponses := make([]GroupScanResponse, len(groupPaths))
+	groupScanResponses := make([]*GroupScanResponse, len(groupPaths))
 
 	for i, gp := range groupPaths {
 		groupFile, err := ioutil.ReadFile(gp)
@@ -74,17 +74,18 @@ func loadGitlab(rootPath string, groupPaths []string) (*GitLab, error) {
 			}
 		}
 
-		groupScanResponses[i] = GroupScanResponse{
-			GroupID:  uint16(i),
+		groupScanResponses[i] = &GroupScanResponse{
+			GroupID:  i,
 			Projects: groupProjectScanResponses,
 		}
 	}
 
 	return &GitLab{
-		&groupScanResponses,
+		groupScanResponses,
 		&config.GitLabIntegrationConfig{
 			BaseURL: "http://gitlab.com",
 		},
+		true,
 	}, nil
 }
 
@@ -154,8 +155,7 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 						AuthorName: "baz 2",
 						AuthorLink: "https://gitlab.com/foo/bar/baz.git",
 						AuthorIcon: "https://gitlab.com/uploads/-/system/project/avatar/1162/envelope.png",
-						Title:      "title",
-						Text: `There are <https://gitlab.com/foo/bar/baz/merge_requests?state=opened|3 open MRs> in <Foo / Bar / baz|https://gitlab.com/foo/bar/baz>. The oldest one is 8 weeks old.
+						Text: `There are <https://gitlab.com/foo/bar/baz/merge_requests?state=opened|3 open MRs> in <https://gitlab.com/foo/bar/baz|Foo / Bar / baz>. The oldest one is *8 weeks* old.
 
 1 MR is reviewed and waiting:
 ✘ <https://gitlab.com/foo/bar/project/-/merge_requests/4|MR 4 - Title> (created *5 weeks* ago, updated 19 hours ago) by <@D4ntrax>
@@ -164,7 +164,7 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 ✘ <https://gitlab.com/foo/bar/project/-/merge_requests/1|MR 1 - Title> (created *2 days* ago, updated 15 minutes ago) by <@D3ntrax>
 ✔ <https://gitlab.com/foo/bar/project/-/merge_requests/2|MR 2 - Title> (created *8 weeks* ago) by <@Dentrax>`,
 						Footer:     "foo/bar",
-						FooterIcon: "http://gitlab.com//uploads/-/system/group/avatar/229/bar.png",
+						FooterIcon: "http://gitlab.com/uploads/-/system/group/avatar/229/bar.png",
 					},
 				},
 			},
@@ -177,19 +177,13 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, g)
 
-			got, err := g.GenerateMessage(tt.options)
+			got, err := g.GenerateSlackMessage(tt.options)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GenerateMessage() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			assert.NotNil(t, got)
-
-			assert.Equal(t, tt.want.Username, got.Username)
-			assert.Equal(t, tt.want.IconEmoji, got.IconEmoji)
-			assert.Equal(t, tt.want.IconURL, got.IconURL)
-			assert.Equal(t, tt.want.Channel, got.Channel)
-			assert.Equal(t, tt.want.Text, got.Text)
 
 			assert.Len(t, got.Attachments, len(tt.want.Attachments))
 
@@ -221,6 +215,6 @@ func Benchmark_GenerateMessage(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, _ = g.GenerateMessage(o)
+		_, _ = g.GenerateSlackMessage(o)
 	}
 }
