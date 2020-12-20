@@ -1,11 +1,13 @@
 .git
 .gitignore
+.github
 .idea
 .vscode
-.github
 *.md
+.goreleaser.yml
+Dockerfile
 LICENSE
-Makefile
 **/testdata*
 **/vendor*
 main
+remind-us

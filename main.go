@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/Dentrax/remind-us/pkg/alerters"
 	"github.com/Dentrax/remind-us/pkg/alerters/slack"
 	"github.com/Dentrax/remind-us/pkg/config"
@@ -25,12 +26,36 @@ import (
 	"github.com/Dentrax/remind-us/pkg/integrations/gitlab"
 	"github.com/pkg/errors"
 	"log"
+	"os"
+	"runtime"
+	"time"
+)
+
+var (
+	version = "development"
+	builtBy = "compiler"
+	commit  = "unknown"
+	date    = time.Now().String()
 )
 
 func main() {
 	var configPath string
 	flag.StringVar(&configPath, "config-file", "./config.yaml", "Configuration file path")
+	v := flag.Bool("v", false, "Prints current version")
 	flag.Parse()
+
+	if *v {
+		println(fmt.Sprintf(
+			"remind-us %s (%s, %s, %s) on %s (%s)",
+			version,
+			builtBy,
+			date,
+			commit,
+			runtime.GOOS,
+			runtime.GOARCH,
+		))
+		os.Exit(0)
+	}
 
 	c, err := config.Load(configPath)
 
