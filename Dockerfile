@@ -15,7 +15,6 @@ RUN go mod verify
 
 COPY main.go main.go
 
-COPY testdata/ testdata/
 COPY pkg/ pkg/
 
 RUN go build \

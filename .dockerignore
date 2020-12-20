@@ -1,0 +1,11 @@
+.git
+.gitignore
+.idea
+.vscode
+.github
+*.md
+LICENSE
+Makefile
+**/testdata*
+**/vendor*
+main
