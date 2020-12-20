@@ -124,6 +124,7 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 			[]string{
 				"../../../testdata/integrations/gitlab/groups_0_projects.json",
 				"../../../testdata/integrations/gitlab/groups_1_projects.json",
+				"../../../testdata/integrations/gitlab/groups_2_projects.json",
 			},
 			integrations.GenerateMessageOptions{},
 			slack.WebhookMessage{
@@ -132,7 +133,20 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 				IconURL:     "icon_url",
 				Channel:     "#channel",
 				Text:        "text",
-				Attachments: nil,
+				Attachments: []slack.Attachment{
+					{
+						Color:      "good",
+						AuthorName: "baz",
+						AuthorLink: "https://gitlab.com/foo/bar/baz.git",
+						AuthorIcon: "",
+						Text: `There is <https://gitlab.com/foo/bar/baz/merge_requests?state=opened|1 open MR> in <https://gitlab.com/foo/bar/baz|Foo / Bar / baz>.
+
+1 MR is awaiting review:
+✓ <https://gitlab.com/foo/bar/project/-/merge_requests/0|MR 0 - Title> (created *4 weeks* ago, updated *4 weeks* ago) by <@name.surname.1>`,
+						Footer:     "foo/bar",
+						FooterIcon: "http://gitlab.com/uploads/-/system/group/avatar/229/bar.png",
+					},
+				},
 			},
 			false,
 		},
@@ -140,7 +154,7 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 			"it should parse multi groups with multi projects and mrs",
 			"../../../testdata/integrations/gitlab",
 			[]string{
-				"../../../testdata/integrations/gitlab/groups_2_projects.json",
+				"../../../testdata/integrations/gitlab/groups_3_projects.json",
 			},
 			integrations.GenerateMessageOptions{},
 			slack.WebhookMessage{
@@ -162,7 +176,7 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 
 2 MRs are awaiting review:
 ✘ <https://gitlab.com/foo/bar/project/-/merge_requests/1|MR 1 - Title> (created *2 days* ago, updated 15 minutes ago) by <@D3ntrax>
-✔ <https://gitlab.com/foo/bar/project/-/merge_requests/2|MR 2 - Title> (created *8 weeks* ago) by <@Dentrax>`,
+✓ <https://gitlab.com/foo/bar/project/-/merge_requests/2|MR 2 - Title> (created *8 weeks* ago) by <@Dentrax>`,
 						Footer:     "foo/bar",
 						FooterIcon: "http://gitlab.com/uploads/-/system/group/avatar/229/bar.png",
 					},
@@ -207,6 +221,7 @@ func Benchmark_GenerateMessage(b *testing.B) {
 		"../../../testdata/integrations/gitlab/groups_0_projects.json",
 		"../../../testdata/integrations/gitlab/groups_1_projects.json",
 		"../../../testdata/integrations/gitlab/groups_2_projects.json",
+		"../../../testdata/integrations/gitlab/groups_3_projects.json",
 	})
 
 	o := integrations.GenerateMessageOptions{}

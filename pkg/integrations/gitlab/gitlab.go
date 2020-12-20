@@ -146,14 +146,19 @@ func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOption
 				return d.String()
 			}
 
-			GetMRKeyword := func(openMRs int) string {
+			GetMRKeyword := func(link string, openMRs int) string {
 				if openMRs > 1 {
-					return "MRs"
+					return fmt.Sprintf("are <%s|%d open MRs>", link, openMRs)
 				}
-				return "MR"
-			}(openMRs)
+				return fmt.Sprintf("is <%s|%d open MR>", link, openMRs)
+			}(fmt.Sprintf("%s/merge_requests?state=opened", p.Project.WebURL), openMRs)
 
-			resultProject.WriteString(fmt.Sprintf("There are <%s|%d open %s> in <%s|%s>. The oldest one is %s old.", fmt.Sprintf("%s/merge_requests?state=opened", p.Project.WebURL), openMRs, GetMRKeyword, p.Project.WebURL, p.Project.NameWithNamespace, GetTimeText(&oldest)))
+			resultProject.WriteString(fmt.Sprintf("There %s in <%s|%s>.", GetMRKeyword, p.Project.WebURL, p.Project.NameWithNamespace))
+
+			if openMRs > 1 {
+				resultProject.WriteString(fmt.Sprintf(" The oldest one is %s old.", GetTimeText(&oldest)))
+			}
+
 			resultProject.WriteString("\n")
 
 			var reviewedMRs []*gitlab.MergeRequest
@@ -183,7 +188,7 @@ func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOption
 			AppendMRInfo := func(buffer *bytes.Buffer, m *gitlab.MergeRequest) {
 				GetCanBeMerged := func(b string) rune {
 					if strings.EqualFold(b, "can_be_merged") {
-						return '✔'
+						return '✓'
 					}
 					return '✘'
 				}(m.MergeStatus)
@@ -201,7 +206,9 @@ func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOption
 				AppendMRInfo(&resultProject, m)
 			}
 
-			resultProject.WriteString("\n")
+			if len(reviewedMRs) >= 1 {
+				resultProject.WriteString("\n")
+			}
 
 			if len(awaitingMRs) > 1 {
 				resultProject.WriteString(fmt.Sprintf("\n%d MRs are awaiting review:", len(awaitingMRs)))
