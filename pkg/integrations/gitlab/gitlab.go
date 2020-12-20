@@ -113,7 +113,7 @@ func (g *GitLab) Load(config config.IntegrationConfig) error {
 }
 
 func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOptions) (*slack.WebhookMessage, error) {
-	if g.loaded == false {
+	if !g.loaded {
 		return nil, errors.New("not loaded")
 	}
 
