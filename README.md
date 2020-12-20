@@ -32,6 +32,12 @@
 > * Easy _cron job_ integration
 > * ... and much more! - Explore and contribute!
 
+## Screenshots
+
+### GitLab: Slack
+
+![Output](https://raw.githubusercontent.com/Dentrax/remind-us/master/.res/ss-gitlab-slack.png) 
+
 ## Installation
 
 * Via Go
@@ -60,9 +66,25 @@ $ remind-us --config-file "./config.yaml"
 $ docker run -v `pwd`/config.yaml:/app/config.yaml -it remind-us
 ```
 
-## 
+## Configuration
 
-![Output](https://raw.githubusercontent.com/Dentrax/remind-us/master/.res/ss-gitlab-slack.png) 
+```yaml
+integrations:
+  gitlab:
+    baseURL: <https://gitlab.com>
+    token: <token>
+    listen:
+      areas:
+        - type: "PR"
+      groups:
+        - <list-of-group-id>
+alerts:
+  slack:
+    webhook: "<your-slack-webhook-endpoint>"
+    channel: "<#channel>"
+    username: "<username>"
+    icon: "<:icon:>"
+```
 
 ## TO-DO
 
