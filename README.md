@@ -86,6 +86,52 @@ alerts:
     icon: "<:icon:>"
 ```
 
+## Deployment
+
+### Kubernetes CronJob Schedule
+
+* Create a Kubernetes [ConfigMap](https://kubernetes.io/docs/concepts/configuration/configmap/) resource
+
+```bash
+$ mkdir configmap
+$ cp /path/to/your/config.yaml ./configmap
+$ kubectl create configmap my-awesome-reminder-config --from-file=./configmap/ --dry-run=client -o yaml | kubectl apply -f -
+```
+
+* Create a `cron.yaml` file
+
+```yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: my-awesome-reminder
+spec:
+  schedule: "0 9 * * 1-5" # set your schedule time: https://crontab.guru
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: remind-us
+              image: ghcr.io/dentrax/remind-us:latest
+              imagePullPolicy: IfNotPresent
+              args: [ "--config-file", "/configmap/config.yaml" ]
+              volumeMounts:
+                - name: configmap
+                  mountPath: /configmap
+          restartPolicy: Never
+          volumes:
+            - name: configmap
+              configMap:
+                name: my-awesome-reminder-config
+```
+
+* Deploy your CronJob!
+
+```bash
+$ kubectl apply --record=true -f ./cron.yaml
+```
+
 ## TO-DO
 
 * [ ] Add integration: [Jira](https://www.atlassian.com/software/jira)
