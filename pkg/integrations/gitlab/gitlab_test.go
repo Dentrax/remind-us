@@ -175,7 +175,7 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 ✘ <https://gitlab.com/foo/bar/project/-/merge_requests/4|MR 4 - Title> (created *5 weeks* ago, updated 19 hours ago) by <@D4ntrax>
 
 2 MRs are awaiting review:
-✘ <https://gitlab.com/foo/bar/project/-/merge_requests/1|MR 1 - Title> (created *2 days* ago, updated 15 minutes ago) by <@D3ntrax>
+✓ <https://gitlab.com/foo/bar/project/-/merge_requests/1|MR 1 - Title> (created *2 days* ago, updated 15 minutes ago) by <@D3ntrax>
 ✓ <https://gitlab.com/foo/bar/project/-/merge_requests/2|MR 2 - Title> (created *8 weeks* ago) by <@Dentrax>`,
 						Footer:     "foo/bar",
 						FooterIcon: "http://gitlab.com/uploads/-/system/group/avatar/229/bar.png",

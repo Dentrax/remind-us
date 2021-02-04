@@ -1,3 +1,9 @@
+### IDE
+.idea
+.vscode
+
+.DS_Store
+
 ### Go
 # Binaries for programs and plugins
 *.exe
@@ -15,8 +21,6 @@
 # Dependency directories (remove the comment below to include it)
 vendor/
 
-### IDE
-.idea
-.vscode
-
-.DS_Store
+app
+main
+remind-us

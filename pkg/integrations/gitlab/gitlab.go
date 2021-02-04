@@ -186,12 +186,12 @@ func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOption
 			}
 
 			AppendMRInfo := func(buffer *bytes.Buffer, m *gitlab.MergeRequest) {
-				GetCanBeMerged := func(b string) rune {
-					if strings.EqualFold(b, "can_be_merged") {
-						return '✓'
+				GetCanBeMerged := func(blockingDiscussion, hasConflicts bool) rune {
+					if blockingDiscussion || hasConflicts {
+						return '✘'
 					}
-					return '✘'
-				}(m.MergeStatus)
+					return '✓'
+				}(!m.BlockingDiscussionsResolved, m.HasConflicts)
 				buffer.WriteString(fmt.Sprintf("\n%c <%s|%s> %s", GetCanBeMerged, m.WebURL, m.Title, GetDateInfo(m.CreatedAt, m.UpdatedAt)))
 				buffer.WriteString(fmt.Sprintf(" by <@%s>", m.Author.Username))
 			}
