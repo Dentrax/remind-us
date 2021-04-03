@@ -1,0 +1,14 @@
+linters:
+  enable-all: true
+  disable:
+    - lll
+    - gomnd
+    - gochecknoglobals
+    - funlen
+    - gocognit
+    - testpackage
+    - exhaustivestruct
+    - scopelint
+    - cyclop
+    - nlreturn
+    - wrapcheck # Issue #12: https://github.com/tomarrell/wrapcheck/issues/12

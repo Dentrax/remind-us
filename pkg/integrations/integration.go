@@ -21,13 +21,20 @@ import (
 	"github.com/slack-go/slack"
 )
 
+type Integration struct {
+	Validated bool
+	Loaded    bool
+}
+
 type IIntegration interface {
 	Name() string
-	Load(config.IntegrationConfig) error
+	Enabled(config.Integrations) bool
+	Validate(config.Integrations) error
+	Load(config.Integrations) error
 	GenerateSlackMessage(GenerateMessageOptions) (*slack.WebhookMessage, error)
 }
 
 type GenerateMessageOptions struct {
-	//For integration name, i.e. Slack.
+	// For integration name, i.e. Slack.
 	For string
 }

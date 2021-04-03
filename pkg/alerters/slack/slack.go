@@ -17,10 +17,14 @@ limitations under the License.
 package slack
 
 import (
-	"errors"
+	"strconv"
+
 	"github.com/Dentrax/remind-us/pkg/config"
+	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 )
+
+var errAlert = errors.New("slack is not loaded")
 
 type Slack struct {
 	config *config.SlackAlertConfig
@@ -31,22 +35,42 @@ func (s *Slack) Name() string {
 	return "Slack"
 }
 
+func (s *Slack) Enabled(config config.AlertConfig) bool {
+	if config.Slack == nil {
+		return false
+	}
+
+	if config.Slack.Enabled == "" {
+		return true
+	}
+
+	v, _ := strconv.ParseBool(config.Slack.Enabled)
+
+	return v
+}
+
 func (s *Slack) Load(config config.AlertConfig) error {
-	s.config = &config.Slack
+	s.config = config.Slack
 	s.loaded = true
+
 	return nil
 }
 
 func (s *Slack) Alert(message interface{}) error {
 	if !s.loaded {
-		return errors.New("not loaded")
+		return errAlert
 	}
 
-	wh := message.(*slack.WebhookMessage)
+	wh := message.(*slack.WebhookMessage) //nolint:forcetypeassert
 
 	wh.Username = s.config.Username
 	wh.Channel = s.config.Channel
 	wh.IconEmoji = s.config.Icon
 
-	return slack.PostWebhook(s.config.Webhook, message.(*slack.WebhookMessage))
+	err := slack.PostWebhook(s.config.Webhook, message.(*slack.WebhookMessage))
+	if err != nil {
+		return errors.Wrap(err, "unable to post webhook during alerting")
+	}
+
+	return nil
 }

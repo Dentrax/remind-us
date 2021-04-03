@@ -20,22 +20,26 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/Dentrax/remind-us/pkg/config"
 	"github.com/Dentrax/remind-us/pkg/integrations"
 	"github.com/hako/durafmt"
 	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 	"github.com/xanzy/go-gitlab"
-	"log"
-	"strconv"
-	"strings"
-	"time"
 )
 
+var errLoaded = errors.New("gitlab is not loaded")
+
 type GitLab struct {
+	integrations.Integration
+
 	Result []*GroupScanResponse
 	config *config.GitLabIntegrationConfig
-	loaded bool
 }
 
 type GroupScanResponse struct {
@@ -52,9 +56,28 @@ func (g *GitLab) Name() string {
 	return "GitLab"
 }
 
-func (g *GitLab) Load(config config.IntegrationConfig) error {
-	git, err := gitlab.NewClient(config.GitLab.Token, gitlab.WithBaseURL(config.GitLab.BaseURL))
+func (g *GitLab) Enabled(config config.Integrations) bool {
+	if config.GitLab == nil {
+		return false
+	}
 
+	if config.GitLab.Enabled == "" {
+		return true
+	}
+
+	v, _ := strconv.ParseBool(config.GitLab.Enabled)
+
+	return v
+}
+
+func (g *GitLab) Validate(config config.Integrations) error {
+	g.Validated = true
+
+	return nil
+}
+
+func (g *GitLab) Load(config config.Integrations) error {
+	git, err := gitlab.NewClient(config.GitLab.Token, gitlab.WithBaseURL(config.GitLab.BaseURL))
 	if err != nil {
 		return errors.Wrap(err, "Unable to generate GitLab Client")
 	}
@@ -68,7 +91,6 @@ func (g *GitLab) Load(config config.IntegrationConfig) error {
 				PerPage: 100,
 			},
 		})
-
 		if err != nil {
 			return errors.Wrapf(err, "Unable to list projects for group id: '%d'", l)
 		}
@@ -92,7 +114,6 @@ func (g *GitLab) Load(config config.IntegrationConfig) error {
 					State: &stateType,
 				},
 			)
-
 			if err != nil {
 				return errors.Wrapf(err, "Unable to list merge requests for project id: %d, group id: %d", p.ID, l)
 			}
@@ -106,15 +127,15 @@ func (g *GitLab) Load(config config.IntegrationConfig) error {
 		}
 	}
 
-	g.config = &config.GitLab
-	g.loaded = true
+	g.config = config.GitLab
+	g.Loaded = true
 
 	return nil
 }
 
 func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOptions) (*slack.WebhookMessage, error) {
-	if !g.loaded {
-		return nil, errors.New("not loaded")
+	if !g.Loaded {
+		return nil, errLoaded
 	}
 
 	var attachments []slack.Attachment
@@ -125,9 +146,11 @@ func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOption
 
 			oldest := time.Now()
 			openMRs := 0
+
 			for _, m := range p.MRs {
 				if strings.EqualFold(m.State, "opened") {
 					openMRs++
+
 					if m.CreatedAt != nil && m.CreatedAt.Before(oldest) {
 						oldest = *m.CreatedAt
 					}
@@ -143,6 +166,7 @@ func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOption
 				if d.Duration().Hours() >= 48 {
 					return fmt.Sprintf("*%s*", d.String())
 				}
+
 				return d.String()
 			}
 
@@ -150,6 +174,7 @@ func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOption
 				if openMRs > 1 {
 					return fmt.Sprintf("are <%s|%d open MRs>", link, openMRs)
 				}
+
 				return fmt.Sprintf("is <%s|%d open MR>", link, openMRs)
 			}(fmt.Sprintf("%s/merge_requests?state=opened", p.Project.WebURL), openMRs)
 
@@ -162,7 +187,9 @@ func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOption
 			resultProject.WriteString("\n")
 
 			var reviewedMRs []*gitlab.MergeRequest
+
 			var awaitingMRs []*gitlab.MergeRequest
+
 			for _, m := range p.MRs {
 				if strings.EqualFold(m.State, "opened") {
 					if m.Upvotes > 0 || m.Downvotes > 0 || m.UserNotesCount > 0 {
@@ -178,10 +205,12 @@ func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOption
 					if created.Equal(*updated) {
 						return fmt.Sprintf("(created %s ago)", GetTimeText(created))
 					}
+
 					return fmt.Sprintf("(created %s ago, updated %s ago)", GetTimeText(created), GetTimeText(updated))
 				} else if created != nil {
 					return fmt.Sprintf("(created %s ago)", GetTimeText(created))
 				}
+
 				return ""
 			}
 
@@ -190,6 +219,7 @@ func (g *GitLab) GenerateSlackMessage(options integrations.GenerateMessageOption
 					if blockingDiscussion || hasConflicts {
 						return '✘'
 					}
+
 					return '✓'
 				}(!m.BlockingDiscussionsResolved, m.HasConflicts)
 				buffer.WriteString(fmt.Sprintf("\n%c <%s|%s> %s", GetCanBeMerged, m.WebURL, m.Title, GetDateInfo(m.CreatedAt, m.UpdatedAt)))

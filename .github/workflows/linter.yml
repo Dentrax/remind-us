@@ -17,5 +17,5 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.33
-          golangci_lint_flags: "--tests=false"
+          version: v1.39
+          golangci_lint_flags: "--tests=false --config=.golangci.yml"

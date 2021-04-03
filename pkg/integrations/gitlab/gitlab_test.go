@@ -17,18 +17,19 @@ limitations under the License.
 package gitlab
 
 import (
-	"bou.ke/monkey"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"testing"
+	"time"
+
+	"bou.ke/monkey"
 	"github.com/Dentrax/remind-us/pkg/config"
 	"github.com/Dentrax/remind-us/pkg/integrations"
 	"github.com/pkg/errors"
 	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"github.com/xanzy/go-gitlab"
-	"io/ioutil"
-	"testing"
-	"time"
 )
 
 func loadGitlab(rootPath string, groupPaths []string) (*GitLab, error) {
@@ -36,7 +37,6 @@ func loadGitlab(rootPath string, groupPaths []string) (*GitLab, error) {
 
 	for i, gp := range groupPaths {
 		groupFile, err := ioutil.ReadFile(gp)
-
 		if err != nil {
 			return nil, errors.Wrapf(err, "unable to read group file from path: '%s'", gp)
 		}
@@ -55,7 +55,6 @@ func loadGitlab(rootPath string, groupPaths []string) (*GitLab, error) {
 			pp := fmt.Sprintf("%s/projects_%d_merge_requests.json", rootPath, pp.ID)
 
 			projectFile, err := ioutil.ReadFile(pp)
-
 			if err != nil {
 				return nil, errors.Wrapf(err, "unable to read group file from path: '%s'", gp)
 			}
@@ -81,17 +80,25 @@ func loadGitlab(rootPath string, groupPaths []string) (*GitLab, error) {
 	}
 
 	return &GitLab{
+		integrations.Integration{
+			Validated: true,
+			Loaded:    true,
+		},
 		groupScanResponses,
 		&config.GitLabIntegrationConfig{
 			BaseURL: "http://gitlab.com",
 		},
-		true,
 	}, nil
 }
 
 func TestGitLab_GenerateMessage(t *testing.T) {
-	patch := monkey.Patch(time.Now, func() time.Time { return time.Date(2020, time.December, 13, 7, 7, 7, 7, time.UTC) }) //Ref: https://stackoverflow.com/a/40639928/5685796
-	defer patch.Unpatch()
+	t.Parallel()
+
+	patch := monkey.Patch(time.Now, func() time.Time { return time.Date(2020, time.December, 13, 7, 7, 7, 7, time.UTC) }) // Ref: https://stackoverflow.com/a/40639928/5685796
+
+	t.Cleanup(func() {
+		patch.Unpatch()
+	})
 
 	tests := []struct {
 		name       string
@@ -128,11 +135,11 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 			},
 			integrations.GenerateMessageOptions{},
 			slack.WebhookMessage{
-				Username:    "Username",
-				IconEmoji:   ":emoji:",
-				IconURL:     "icon_url",
-				Channel:     "#channel",
-				Text:        "text",
+				Username:  "Username",
+				IconEmoji: ":emoji:",
+				IconURL:   "icon_url",
+				Channel:   "#channel",
+				Text:      "text",
 				Attachments: []slack.Attachment{
 					{
 						Color:      "good",
@@ -186,7 +193,10 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			g, err := loadGitlab(tt.rootPath, tt.groupPaths)
 			assert.NoError(t, err)
 			assert.NotNil(t, g)
@@ -194,6 +204,7 @@ func TestGitLab_GenerateMessage(t *testing.T) {
 			got, err := g.GenerateSlackMessage(tt.options)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GenerateMessage() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
 

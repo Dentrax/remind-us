@@ -1,4 +1,4 @@
-FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:1.15.5-alpine3.12@sha256:072f74098dd1e4e8e1c05102aa2571c1f5a4c307f3b9cdc9e0ed9f6ed5b37ef6 as builder
+FROM --platform=${BUILDPLATFORM:-linux/amd64} golang:1.16.3-alpine3.13@sha256:6c35b28ceee082c621c818c097f418cd55104a16e51003120c1bf37111ed9cfe as builder
 
 ARG VERSION
 ARG COMMIT

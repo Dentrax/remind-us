@@ -22,19 +22,37 @@ import (
 )
 
 type Config struct {
-	Integrations IntegrationConfig `yaml:"integrations"`
-	Alerts       AlertConfig       `yaml:"alert"`
+	Integrations Integrations `yaml:"integrations"`
+	Alerts       AlertConfig  `yaml:"alert"`
 }
 
-type IntegrationConfig struct {
-	GitLab GitLabIntegrationConfig `yaml:"gitlab"`
+type Integrations struct {
+	GitLab *GitLabIntegrationConfig `yaml:"gitlab"`
+	RSS    *RSSIntegrationConfig    `yaml:"rss"`
 }
 
 type GitLabIntegrationConfig struct {
+	Enabled string                  `yaml:"enabled"`
 	Type    string                  `yaml:"type"`
 	BaseURL string                  `yaml:"baseURL"`
 	Token   string                  `yaml:"token"`
 	Listen  IntegrationListenConfig `yaml:"listen"`
+}
+
+type RSSIntegrationConfig struct {
+	Enabled string            `yaml:"enabled"`
+	Sources []RSSSourceConfig `yaml:"sources"`
+}
+
+type RSSSourceConfig struct {
+	URL        string         `yaml:"url"`
+	Since      string         `yaml:"since"`
+	MatchTitle RSSMatchConfig `yaml:"matchTitle"`
+}
+
+type RSSMatchConfig struct {
+	Regexes  []string `yaml:"regexes"`
+	Contains []string `yaml:"contains"`
 }
 
 type IntegrationListenConfig struct {
@@ -47,10 +65,11 @@ type IntegrationAreaConfig struct {
 }
 
 type AlertConfig struct {
-	Slack SlackAlertConfig `yaml:"slack"`
+	Slack *SlackAlertConfig `yaml:"slack"`
 }
 
 type SlackAlertConfig struct {
+	Enabled  string `yaml:"enabled"`
 	Webhook  string `yaml:"webhook"`
 	Channel  string `yaml:"channel"`
 	Username string `yaml:"username"`
@@ -71,7 +90,6 @@ func Load(path string) (*Config, error) {
 	c := &Config{}
 
 	err := v.Unmarshal(c)
-
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to unmarshal to Config struct")
 	}

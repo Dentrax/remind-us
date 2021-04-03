@@ -25,7 +25,7 @@
 
 ## Features
 
-> * NEW! Reminder: *GitLab (PRs)*
+> * NEW! Reminder: *RSS, GitLab (PRs)*
 > * NEW! Alerter: *Slack (Webhook)*
 > * Dynamic configuration support
 > * Easy to use _integration_ and _alerter_ interfaces
@@ -33,6 +33,10 @@
 > * ... and much more! - Explore and contribute!
 
 ## Screenshots
+
+### RSS: Slack
+
+![Output](https://raw.githubusercontent.com/Dentrax/remind-us/master/.res/ss-rss-slack.png) 
 
 ### GitLab: Slack
 
@@ -70,6 +74,16 @@ $ docker run -v `pwd`/config.yaml:/app/config.yaml -it remind-us
 
 ```yaml
 integrations:
+  rss:
+    sources:
+      - url: "https://www.reddit.com/r/kubernetes/new/.rss"
+        since: 1h  # searches for post in the last 1 hour, sync to the same interval as the CronJob. 
+        matchTitle:
+          contains:  # if 'CVE' contains in the post title
+            - "CVE"
+            - "book" # or
+          regexes:  # you can search by writing ReGeX.
+            - "^(foo|bar)$" 
   gitlab:
     baseURL: <https://gitlab.com>
     token: <token>
@@ -134,12 +148,14 @@ $ kubectl apply --record=true -f ./cron.yaml
 
 ## TO-DO
 
+* [X] Add integration: [RSS](https://en.wikipedia.org/wiki/RSS)
 * [ ] Add integration: [Jira](https://www.atlassian.com/software/jira)
 * [ ] Add integration: [Todoist](https://todoist.com/)
 * [ ] Add integration: [GitHub](https://github.com/)
 * [ ] Add integration: *Quates*
 * [ ] Add alerter: `stdout`
 * [ ] Concurrency requests?
+* [X] Implement [golangci-lint](https://github.com/golangci/golangci-lint) in Actions
 
 ## License
 

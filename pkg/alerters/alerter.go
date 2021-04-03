@@ -20,6 +20,7 @@ import "github.com/Dentrax/remind-us/pkg/config"
 
 type IAlerter interface {
 	Name() string
+	Enabled(config.AlertConfig) bool
 	Load(alertConfig config.AlertConfig) error
 	Alert(message interface{}) error
 }
