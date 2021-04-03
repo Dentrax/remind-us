@@ -1,5 +1,14 @@
 integrations:
+  rss:
+    enabled: true
+    sources:
+      - url: "https://www.reddit.com/r/kubernetes/new/.rss"
+        since: 1h
+        matchTitle:
+          contains:
+            - "CVE"
   gitlab:
+    enabled: true
     baseURL: https://gitlab.com
     token: xxx
     listen:
@@ -11,6 +20,7 @@ integrations:
         - 333
 alerts:
   slack:
+    enabled: true
     webhook: "webhook"
     channel: "#channel"
     username: "Username"

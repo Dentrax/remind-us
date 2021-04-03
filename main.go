@@ -19,27 +19,31 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"os"
+	"runtime"
+	"time"
+
 	"github.com/Dentrax/remind-us/pkg/alerters"
 	"github.com/Dentrax/remind-us/pkg/alerters/slack"
 	"github.com/Dentrax/remind-us/pkg/config"
 	"github.com/Dentrax/remind-us/pkg/integrations"
 	"github.com/Dentrax/remind-us/pkg/integrations/gitlab"
+	rss "github.com/Dentrax/remind-us/pkg/integrations/rss"
 	"github.com/pkg/errors"
-	"log"
-	"os"
-	"runtime"
-	"time"
 )
 
 var (
-	version = "development"
-	builtBy = "compiler"
-	commit  = "unknown"
-	date    = time.Now().String()
+	version     = "development"
+	builtBy     = "compiler"
+	commit      = "unknown"
+	date        = time.Now().String()
+	InitialTime = time.Now()
 )
 
 func main() {
 	var configPath string
+
 	flag.StringVar(&configPath, "config-file", "./config.yaml", "Configuration file path")
 	v := flag.Bool("v", false, "Prints current version")
 	flag.Parse()
@@ -58,7 +62,6 @@ func main() {
 	}
 
 	c, err := config.Load(configPath)
-
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,15 +76,24 @@ func main() {
 func Run(config *config.Config) error {
 	for _, i := range []integrations.IIntegration{
 		&gitlab.GitLab{},
+		&rss.RSS{
+			InitialTime: InitialTime,
+		},
 	} {
-		err := i.Load(config.Integrations)
+		if !i.Enabled(config.Integrations) {
+			continue
+		}
 
+		if err := i.Validate(config.Integrations); err != nil {
+			return errors.Wrapf(err, "Could not validate '%s' config", i.Name())
+		}
+
+		err := i.Load(config.Integrations)
 		if err != nil {
 			return errors.Wrapf(err, "unable to load integration: '%s'", i.Name())
 		}
 
 		message, err := i.GenerateSlackMessage(integrations.GenerateMessageOptions{})
-
 		if err != nil {
 			return errors.Wrapf(err, "unable to generate slack message for integration: '%s'", i.Name())
 		}
@@ -89,8 +101,11 @@ func Run(config *config.Config) error {
 		for _, a := range []alerters.IAlerter{
 			&slack.Slack{},
 		} {
-			err := a.Load(config.Alerts)
+			if !a.Enabled(config.Alerts) {
+				continue
+			}
 
+			err := a.Load(config.Alerts)
 			if err != nil {
 				return errors.Wrapf(err, "unable to load integration: '%s'", i.Name())
 			}

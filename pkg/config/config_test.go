@@ -22,6 +22,8 @@ import (
 )
 
 func TestLoad(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name    string
 		path    string
@@ -50,8 +52,8 @@ func TestLoad(t *testing.T) {
 			"it should load if good path and yaml",
 			"../../testdata/config.yaml",
 			&Config{
-				IntegrationConfig{
-					GitLab: GitLabIntegrationConfig{
+				Integrations{
+					GitLab: &GitLabIntegrationConfig{
 						BaseURL: "https://gitlab.com",
 						Token:   "xxx",
 						Listen: IntegrationListenConfig{
@@ -65,7 +67,7 @@ func TestLoad(t *testing.T) {
 					},
 				},
 				AlertConfig{
-					SlackAlertConfig{
+					&SlackAlertConfig{
 						Webhook:  "webhook",
 						Channel:  "#channel",
 						Username: "Username",
@@ -77,7 +79,10 @@ func TestLoad(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got, err := Load(tt.path)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Load() error = %v, wantErr %v", err, tt.wantErr)
