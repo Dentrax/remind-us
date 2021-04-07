@@ -98,6 +98,11 @@ func Run(config *config.Config) error {
 			return errors.Wrapf(err, "unable to generate slack message for integration: '%s'", i.Name())
 		}
 
+		if len(message.Attachments) == 0 {
+			log.Printf("0 Attachments found for %s, no need to alert", i.Name())
+			continue
+		}
+
 		for _, a := range []alerters.IAlerter{
 			&slack.Slack{},
 		} {
